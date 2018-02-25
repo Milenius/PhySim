@@ -6,25 +6,85 @@ var em;
 
 var gs;   //Grid Size
 
+var v1;
+var v2;
+var mov;
+
+var ex;
+var ey;
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
   background(255);
-  frameRate(2);
+  frameRate(60);
 
   gs = width/16;
   con = new Condensator(2, 0, 8, 5);
   b1  = new BField(2, 0, 8, 5);
   em = new Emitter(0, 2);
+
+  v1 = createVector(1,0);
+  v2 = createVector(0,0.5);
+  mov = createVector();
+
+  ex = width/2;
+  ey = height/2;
 }
+
+var addA = false;
+var addB = false;
 
 function draw() {
   background(255);
+  /*
+  //Drawing
   drawGrid();
   b1.render();
   con.render();
   con.renderField();
   em.render();
+  if (frameCount%10 == 0) {em.emit();}
+  for (let i = 0; i < electrons.length; i++) {
+    electrons[i].render();
+  }
+
+  //Updating
+  con.update();
+  b1.update();
+  for (let i = 0; i < electrons.length; i++) {
+    electrons[i].update();
+  }
+  */
+
+  if (v1.x <= -1) {
+    addB = true;
+  }
+  if (v1.x >= 1) {
+    addB = false;
+  }
+  if (addB) {
+    v1.add(0.1, -0.1);
+  } else {
+    v1.add(-0.1, 0.1);
+  }
+
+  if (v2.y <= -0.5) {
+    addA = true;
+  }
+  if (v2.y >= 0.5) {
+    addA = false;
+  }
+  if (addA) {
+    v2.add(-0.05, 0.05);
+  } else {
+    v2.add(0.05, -0.05);
+  }
+
+  mov = p5.Vector.add(v1,v2);
+  ex += mov.x;
+  ey += mov.y;
+  ellipse(ex, ey, 10, 10);
+
 }
 
 function drawGrid(){
@@ -75,6 +135,14 @@ function Condensator(gX, gY, gWidth, gHeight) {
       line(this.p1x1 + gs*i + 5, this.p2y1-10, this.p1x1 + gs*i, this.p2y1);
     }
   }
+
+  this.update = function() {
+    for (let i = 0; i < electrons.length; i++) {
+      if (electrons[i].x >= this.p1x1) {
+        electrons[i].mov.add(0, 0.0001);
+      }
+    }
+  }
 }
 
 function BField(gX, gY, gWidth, gHeight) {
@@ -83,6 +151,9 @@ function BField(gX, gY, gWidth, gHeight) {
   this.gWidth  = gWidth;
   this.gHeight = gHeight;
 
+  this.x = gX * gs;
+  this.y = gY * gs;
+
   this.render = function() {
     strokeWeight(1);
     for (let i = this.gX; i <= this.gX+this.gWidth; i++) {
@@ -90,6 +161,14 @@ function BField(gX, gY, gWidth, gHeight) {
         line((gs*i)-5, (gs*j)-5, (gs*i)+5, (gs*j)+5);
         line((gs*i)+5, (gs*j)-5, (gs*i)-5, (gs*j)+5);
         point(gs*i, gs*j);
+      }
+    }
+  }
+
+  this.update = function() {
+    for (let i = 0; i < electrons.length; i++) {
+      if (electrons[i].x >= this.x) {
+        electrons[i].mov.add(0, -0.0001);
       }
     }
   }
@@ -111,7 +190,7 @@ function Emitter(gX, gY) {
   }
 
   this.emit = function() {
-    electrons.append(new Electron(this.x+gs, this.y+(gs/2), 1));
+    electrons.push(new Electron(this.x+gs, this.y+(gs/2), 0.03));
   }
 }
 
@@ -119,4 +198,28 @@ function Electron(x, y, speed) {
   this.x = x;
   this.y = y;
   this.speed = speed || 0;
+
+  this.mov = createVector(this.speed, 0);
+
+  this.render = function(){
+    fill('rgb(0, 14, 200)');
+    ellipse(this.x, this.y, 5, 5);
+  }
+
+  this.update = function(){
+    this.x += this.mov.x*gs;
+    this.y += this.mov.y*gs;
+
+    if (this.x > width || this.x < 0 || this.y > height || this.y < 0) {
+      this.destroy();
+    }
+
+    if (this.y >= con.p2y1) {
+      this.destroy();
+    }
+  }
+
+  this.destroy = function(){
+    electrons.splice(electrons.indexOf(this), 1);
+  }
 }
