@@ -1,17 +1,16 @@
+var eCharge = 1.60217646e-19;
+var eMass   = 9.10938188e-31;
+var speedMod = 0.0000001;
+var forceMod = 1000000000000000000;
+
 var electrons = [];
 
 var con;  //Condensator Object placeholder
 var b1;
 var em;
+var pl;
 
 var gs;   //Grid Size
-
-var v1;
-var v2;
-var mov;
-
-var ex;
-var ey;
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
@@ -22,13 +21,7 @@ function setup() {
   con = new Condensator(2, 0, 8, 5);
   b1  = new BField(2, 0, 8, 5);
   em = new Emitter(0, 2);
-
-  v1 = createVector(1,0);
-  v2 = createVector(0,0.5);
-  mov = createVector();
-
-  ex = width/2;
-  ey = height/2;
+  pl = new Plate(11);
 }
 
 var addA = false;
@@ -36,55 +29,26 @@ var addB = false;
 
 function draw() {
   background(255);
-  /*
+
   //Drawing
   drawGrid();
-  b1.render();
-  con.render();
-  con.renderField();
-  em.render();
   if (frameCount%10 == 0) {em.emit();}
   for (let i = 0; i < electrons.length; i++) {
     electrons[i].render();
   }
+  b1.render();
+  con.render();
+  con.renderField();
+  em.render();
+  pl.render();
 
   //Updating
   con.update();
   b1.update();
+  pl.update();
   for (let i = 0; i < electrons.length; i++) {
     electrons[i].update();
   }
-  */
-
-  if (v1.x <= -1) {
-    addB = true;
-  }
-  if (v1.x >= 1) {
-    addB = false;
-  }
-  if (addB) {
-    v1.add(0.1, -0.1);
-  } else {
-    v1.add(-0.1, 0.1);
-  }
-
-  if (v2.y <= -0.5) {
-    addA = true;
-  }
-  if (v2.y >= 0.5) {
-    addA = false;
-  }
-  if (addA) {
-    v2.add(-0.05, 0.05);
-  } else {
-    v2.add(0.05, -0.05);
-  }
-
-  mov = p5.Vector.add(v1,v2);
-  ex += mov.x;
-  ey += mov.y;
-  ellipse(ex, ey, 10, 10);
-
 }
 
 function drawGrid(){
@@ -118,11 +82,19 @@ function Condensator(gX, gY, gWidth, gHeight) {
   this.width  = gWidth  * gs;
   this.height = gHeight * gs;
 
+  this.inp = createInput('1750');
+  this.inp.position(50, height/2 + 100);
+
+  this.d = this.gHeight*0.01;
+  this.U = this.inp.value();
+  this.E = this.U / this.d;
+  this.Fel = this.E * eCharge;
+
   this.render = function() {
     strokeWeight(1);
-    fill('rgb(200, 0, 0)');
-    rect(this.p1x1, this.p1y1, this.width, this.pWidth);
     fill('rgb(0, 0, 200)');
+    rect(this.p1x1, this.p1y1, this.width, this.pWidth);
+    fill('rgb(200, 0, 0)');
     rect(this.p2x1, this.p2y1, this.width, this.pWidth);
   }
 
@@ -137,11 +109,23 @@ function Condensator(gX, gY, gWidth, gHeight) {
   }
 
   this.update = function() {
+    this.updateParams();
+
     for (let i = 0; i < electrons.length; i++) {
+      if (electrons[i].y >= this.p2y1 || electrons[i].y <= this.p1y2) {
+        electrons[i].destroy();
+      }
+
       if (electrons[i].x >= this.p1x1) {
-        electrons[i].mov.add(0, 0.0001);
+        electrons[i].mov.add(0, -this.Fel);
       }
     }
+  }
+
+  this.updateParams = function(){
+    this.U = this.inp.value();
+    this.E = this.U / this.d;
+    this.Fel = this.E * eCharge;
   }
 }
 
@@ -153,6 +137,11 @@ function BField(gX, gY, gWidth, gHeight) {
 
   this.x = gX * gs;
   this.y = gY * gs;
+
+  this.inp = createInput('0.12964');
+  this.inp.position(50, height/2 + 150);
+  this.B = this.inp.value();
+  this.Fl;
 
   this.render = function() {
     strokeWeight(1);
@@ -166,11 +155,17 @@ function BField(gX, gY, gWidth, gHeight) {
   }
 
   this.update = function() {
+    this.updateParams();
     for (let i = 0; i < electrons.length; i++) {
       if (electrons[i].x >= this.x) {
-        electrons[i].mov.add(0, -0.0001);
+        this.Fl = this.B*electrons[i].v*eCharge
+        electrons[i].mov.add(0, this.Fl);
       }
     }
+  }
+
+  this.updateParams = function(){
+    this.B = this.inp.value();
   }
 }
 
@@ -181,6 +176,14 @@ function Emitter(gX, gY) {
   this.x = this.gX*gs;
   this.y = this.gY*gs;
 
+  this.inp = createInput('0.20725');
+  this.inp.position(50, height/2 + 50);
+
+
+  this.U = this.inp.value();
+  this.eVel = sqrt((2*this.U*eCharge)/eMass);
+
+
   this.render = function() {
     strokeWeight(1);
     fill('rgb(145, 145, 145)');
@@ -190,16 +193,25 @@ function Emitter(gX, gY) {
   }
 
   this.emit = function() {
-    electrons.push(new Electron(this.x+gs, this.y+(gs/2), 0.03));
+    this.updateParams();
+    electrons.push(new Electron(this.x+gs, this.y+(gs/2), createVector(this.eVel, 0)));
+  }
+
+  this.updateParams = function(){
+    this.U = float(this.inp.value());
+    //this.U += random(-1, 1)*0.0005;
+    this.eVel = sqrt((2*this.U*eCharge)/eMass);
+    console.log(this.eVel);
+
   }
 }
 
-function Electron(x, y, speed) {
+function Electron(x, y, mov) {
   this.x = x;
   this.y = y;
-  this.speed = speed || 0;
 
-  this.mov = createVector(this.speed, 0);
+  this.mov = mov;
+  this.v = this.mov.x;
 
   this.render = function(){
     fill('rgb(0, 14, 200)');
@@ -207,19 +219,34 @@ function Electron(x, y, speed) {
   }
 
   this.update = function(){
-    this.x += this.mov.x*gs;
-    this.y += this.mov.y*gs;
-
+    this.x += this.mov.x*gs*speedMod;
+    this.y += this.mov.y*gs*1e12;
     if (this.x > width || this.x < 0 || this.y > height || this.y < 0) {
-      this.destroy();
-    }
-
-    if (this.y >= con.p2y1) {
       this.destroy();
     }
   }
 
   this.destroy = function(){
     electrons.splice(electrons.indexOf(this), 1);
+  }
+
+
+}
+
+function Plate(gX) {
+  this.gX = gX;
+  this.x = this.gX*gs;
+
+  this.render = function(){
+    rect(this.x-gs/8, 0, gs/8, gs*2.45);
+    rect(this.x-gs/8, gs*2.6, gs/8, height-gs*2.55);
+  }
+
+  this.update = function(){
+    for (let i = 0; i < electrons.length; i++) {
+      if ((electrons[i].y >= gs*2.55 || electrons[i].y <= gs*2.45) && electrons[i].x >= this.x-gs/8 && electrons[i].x <= this.x) {
+        electrons[i].destroy();
+      }
+    }
   }
 }
