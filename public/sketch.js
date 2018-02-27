@@ -1,57 +1,80 @@
-var eCharge = 1.60217646e-19;
-var eMass   = 9.10938188e-31;
-var speedMod = 0.0000001;
-var forceMod = 1000000000000000000;
+//-----------------------VARIABLEN-DEKLARATIONEN-----------------------//
 
-var electrons = [];
+//Naturkonstanten
+var eCharge = 1.60217646e-19;                                            //Elektronen Ladung
+var eMass   = 9.10938188e-31;                                            //Elektronen Masse
 
-var con;  //Condensator Object placeholder
-var b1;
-var em;
-var pl;
+//Simulations modifikator
+var speedMod = 0.0000001;                                                //Geschwindigkeits-Modifikator
+var forceMod = 1000000000000000000;                                      //Kräfte-Modifikator
 
-var gs;   //Grid Size
+//Teilchen
+var electrons = [];                                                      //Teilchen 'Liste'
 
-function setup() {
+//Baustein Deklarationen
+var con;                                                                 //Wienfilter Kondensator
+var b1;                                                                  //Wienfilter Magnetfeld
+var b2;                                                                  //Massenspek. Magnetfeld
+var em;                                                                  //Elektronen Emitter
+var pl;                                                                  //Schirm
+
+//Simulations-Variablen
+var gs;                                                                  //Grid Size
+
+//----------------------------P5-FUNKTIONEN----------------------------//
+
+function setup() {                      //SETUP
+  //P5 Einstellungen
   createCanvas(windowWidth, windowHeight);
   background(255);
   frameRate(60);
 
+  //Simulations-Variablen werden eingestellt
   gs = width/16;
+
+  //Bausteine werden erstellt
   con = new Condensator(2, 0, 8, 5);
   b1  = new BField(2, 0, 8, 5);
-  em = new Emitter(0, 2);
-  pl = new Plate(11);
+  b2  = new BField(11, 0, 5, 10);
+  em  = new Emitter(0, 2);
+  pl  = new Plate(11);
 }
 
-var addA = false;
-var addB = false;
-
-function draw() {
+function draw() {                       //DRAW
   background(255);
 
   //Drawing
-  drawGrid();
-  if (frameCount%10 == 0) {em.emit();}
+  drawGrid();                                   //Gitter wird visualisiert
+
+  //Alle Teilchen werden visualisiert
   for (let i = 0; i < electrons.length; i++) {
     electrons[i].render();
   }
-  b1.render();
-  con.render();
-  con.renderField();
-  em.render();
-  pl.render();
+
+  //Alle Bausteine werden visualisiert
+  b1.render();            //Wienfilter Magnetfeld
+  b2.render();
+  con.render();           //Wienfilter Kondensator
+  con.renderField();      //Wienfilter Feld
+  em.render();            //Emitter
+  pl.render();            //Schirm
 
   //Updating
-  con.update();
-  b1.update();
-  pl.update();
+  if (frameCount%10 == 0) {em.emit();}          //Elektronen werden emittiert
+
+  //Alle Teilchen werden aktualisiert
   for (let i = 0; i < electrons.length; i++) {
     electrons[i].update();
   }
+  //Alle Bausteine werden aktualisiert
+  con.update();           //Kondensator wird aktualisiert
+  b1.update();            //Wienfilter Magnetfeld wird aktualisiert
+  pl.update();            //Schirm wird aktualisiert
 }
 
-function drawGrid(){
+//------------------------------FUNKTIONEN-----------------------------//
+
+function drawGrid(){                    //GRID VISUALISIERUNG
   stroke(0);
   strokeWeight(2);
   for (let i = 0; i <= 17; i++) {
@@ -61,35 +84,43 @@ function drawGrid(){
   }
 }
 
-function Condensator(gX, gY, gWidth, gHeight) {
-  this.gX      = gX;
-  this.gY      = gY;
-  this.gWidth  = gWidth;
-  this.gHeight = gHeight;
+//-------------------------------OBJECTE-------------------------------//
 
-  this.pWidth = gs/4;     //Plate Width
+function Condensator(gX, gY, gWidth, gHeight) {                          //Plattenkondensator Object
+  //Interne Variablen werden deklariert
+  this.gX      = gX;        //Gitter Koordinaten (x)
+  this.gY      = gY;        //Gitter Koordinaten (y)
+  this.gWidth  = gWidth;    //Gitter Breite
+  this.gHeight = gHeight;   //Gitter Höhe
 
+  this.width  = gWidth  * gs;
+  this.height = gHeight * gs;
+
+  this.pWidth = gs/4;       //Platten Breite Width
+
+  //Obere Platten Variablen (Koordinaten System)
   this.p1x1 = gX * gs;
   this.p1y1 = gY * gs;
   this.p1x2 = this.p1x1 + gWidth * gs;
   this.p1y2 = this.p1y1 + this.pWidth;
 
+  //Untere Platten Variablen
   this.p2x1 = this.p1x1;
   this.p2y1 = this.p1y1 + gHeight * gs - this.pWidth;
   this.p2x2 = this.p2x1 + gWidth  * gs;
   this.p2y2 = this.p2y1 + this.pWidth;
 
-  this.width  = gWidth  * gs;
-  this.height = gHeight * gs;
-
+  //Input Element wird erstellt für die Ablenkspannung
   this.inp = createInput('1750');
   this.inp.position(50, height/2 + 100);
 
+  //Plattenkondensator Parameter werden definiert
   this.d = this.gHeight*0.01;
   this.U = this.inp.value();
   this.E = this.U / this.d;
   this.Fel = this.E * eCharge;
 
+  //Visualisierungsfunktion
   this.render = function() {
     strokeWeight(1);
     fill('rgb(0, 0, 200)');
@@ -98,6 +129,7 @@ function Condensator(gX, gY, gWidth, gHeight) {
     rect(this.p2x1, this.p2y1, this.width, this.pWidth);
   }
 
+  //Feld-Visualisierungsfunktion
   this.renderField = function() {
     stroke(0);
     strokeWeight(1);
@@ -108,6 +140,7 @@ function Condensator(gX, gY, gWidth, gHeight) {
     }
   }
 
+  //Aktualisierungsfunktion
   this.update = function() {
     this.updateParams();
 
@@ -122,6 +155,7 @@ function Condensator(gX, gY, gWidth, gHeight) {
     }
   }
 
+  //Parameteraktualisierungsfunktion
   this.updateParams = function(){
     this.U = this.inp.value();
     this.E = this.U / this.d;
@@ -129,7 +163,8 @@ function Condensator(gX, gY, gWidth, gHeight) {
   }
 }
 
-function BField(gX, gY, gWidth, gHeight) {
+function BField(gX, gY, gWidth, gHeight) {                               //Magnetfeld Objekt
+  //Interne Variablen werden deklariert
   this.gX      = gX;
   this.gY      = gY;
   this.gWidth  = gWidth;
@@ -143,6 +178,7 @@ function BField(gX, gY, gWidth, gHeight) {
   this.B = this.inp.value();
   this.Fl;
 
+  //Visualisierungsfunktion
   this.render = function() {
     strokeWeight(1);
     for (let i = this.gX; i <= this.gX+this.gWidth; i++) {
@@ -154,6 +190,7 @@ function BField(gX, gY, gWidth, gHeight) {
     }
   }
 
+  //Aktualisierungsfunktion
   this.update = function() {
     this.updateParams();
     for (let i = 0; i < electrons.length; i++) {
@@ -164,12 +201,14 @@ function BField(gX, gY, gWidth, gHeight) {
     }
   }
 
+  //Parameteraktualisierungsfunktion
   this.updateParams = function(){
     this.B = this.inp.value();
   }
 }
 
-function Emitter(gX, gY) {
+function Emitter(gX, gY) {                                               //Emitter Objekt
+  //Interne Variablen werden deklariert
   this.gX      = gX;
   this.gY      = gY;
 
@@ -183,7 +222,7 @@ function Emitter(gX, gY) {
   this.U = this.inp.value();
   this.eVel = sqrt((2*this.U*eCharge)/eMass);
 
-
+  //Visualisierungsfunktion
   this.render = function() {
     strokeWeight(1);
     fill('rgb(145, 145, 145)');
@@ -192,32 +231,35 @@ function Emitter(gX, gY) {
     line(this.x+(gs/2), this.y+(gs/2), this.x+gs, this.y+(gs/2));
   }
 
+  //Emitterfunktion
   this.emit = function() {
     this.updateParams();
     electrons.push(new Electron(this.x+gs, this.y+(gs/2), createVector(this.eVel, 0)));
   }
 
+  //Parameteraktualisierungsfunktion
   this.updateParams = function(){
     this.U = float(this.inp.value());
     //this.U += random(-1, 1)*0.0005;
     this.eVel = sqrt((2*this.U*eCharge)/eMass);
-    console.log(this.eVel);
-
   }
 }
 
-function Electron(x, y, mov) {
+function Electron(x, y, mov) {                                           //Elektron Objekt
+  //Interne Variablen werden deklariert
   this.x = x;
   this.y = y;
 
   this.mov = mov;
   this.v = this.mov.x;
 
+  //Visualisierungsfunktion
   this.render = function(){
     fill('rgb(0, 14, 200)');
     ellipse(this.x, this.y, 5, 5);
   }
 
+  //Aktualisierungsfunktion
   this.update = function(){
     this.x += this.mov.x*gs*speedMod;
     this.y += this.mov.y*gs*1e12;
@@ -226,24 +268,26 @@ function Electron(x, y, mov) {
     }
   }
 
+  //Löschfunktion
   this.destroy = function(){
     electrons.splice(electrons.indexOf(this), 1);
   }
-
-
 }
 
-function Plate(gX) {
+function Plate(gX) {                                                     //Schirm Objekt
+  //Interne Variablen werden deklariert
   this.gX = gX;
   this.x = this.gX*gs;
 
+  //Visualisierungsfunktion
   this.render = function(){
     rect(this.x-gs/8, 0, gs/8, gs*2.45);
     rect(this.x-gs/8, gs*2.6, gs/8, height-gs*2.55);
   }
 
+  //Aktualisierungsfunktion
   this.update = function(){
-    for (let i = 0; i < electrons.length; i++) {
+    for (let i = 0; i < electrons.length; i++) {  //Elektronen Kollisionsüberprüfung
       if ((electrons[i].y >= gs*2.55 || electrons[i].y <= gs*2.45) && electrons[i].x >= this.x-gs/8 && electrons[i].x <= this.x) {
         electrons[i].destroy();
       }
