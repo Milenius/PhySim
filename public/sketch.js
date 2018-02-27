@@ -38,6 +38,8 @@ function setup() {                      //SETUP
   b2  = new BField(11, 0, 5, 10);
   em  = new Emitter(0, 2);
   pl  = new Plate(11);
+
+  b2.inp.position(50, height/2 + 200);
 }
 
 function draw() {                       //DRAW
@@ -80,6 +82,16 @@ function drawGrid(){                    //GRID VISUALISIERUNG
   for (let i = 0; i <= 17; i++) {
     for (let j = 0; j <= 10; j++) {
       point(gs*i, gs*j);
+    }
+  }
+}
+
+function specialB(){
+  b2.updateParams();
+  var radius;
+  for (let i = 0; i < electrons.length; i++) {
+    if (electrons[i].x >= b2.x) {
+      var radius = (eMass*electrons[i].mov.x)/(b2.B*eCharge);
     }
   }
 }
@@ -149,7 +161,7 @@ function Condensator(gX, gY, gWidth, gHeight) {                          //Platt
         electrons[i].destroy();
       }
 
-      if (electrons[i].x >= this.p1x1) {
+      if (electrons[i].x >= this.p1x1 && electrons[i].x <= this.p1x2) {
         electrons[i].mov.add(0, -this.Fel);
       }
     }
@@ -194,7 +206,7 @@ function BField(gX, gY, gWidth, gHeight) {                               //Magne
   this.update = function() {
     this.updateParams();
     for (let i = 0; i < electrons.length; i++) {
-      if (electrons[i].x >= this.x) {
+      if (electrons[i].x >= this.x && electrons[i].x <= (this.x+(this.gWidth*gs))) {
         this.Fl = this.B*electrons[i].v*eCharge
         electrons[i].mov.add(0, this.Fl);
       }
