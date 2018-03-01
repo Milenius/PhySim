@@ -1,0 +1,7 @@
+directories:
+  output: dist
+  buildResources: build
+appId: n.28.02
+win:
+  target: portable
+electronVersion: 1.8.2

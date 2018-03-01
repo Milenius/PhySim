@@ -1,12 +1,14 @@
 {
-  "name": "electron-p5js-quick-start",
+  "name": "massenspektrometer-sim",
   "version": "1.0.0",
-  "description": "A minimal Electron application running a p5.js sketch",
+  "description": "Eine Visualisierung des massenspektrometers",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
   },
-  "repository": "https://github.com/garciadelcastillo/electron-p5js-quick-start",
+  "repository": "https://github.com/Milenius/PhySim",
   "keywords": [
     "Electron",
     "quick",
@@ -15,10 +17,17 @@
     "demo",
     "p5.js"
   ],
-  "author": "Jose Luis Garcia del Castillo",
-  "license": "tbd",
+  "author": "Nicolay Strohschen",
+  "license": "ccz",
   "devDependencies": {
     "electron": "^1.4.1",
+    "electron-builder": "^20.2.0",
     "electron-reload": "^1.2.2"
+  },
+  "build": {
+    "appId": "n.28.02",
+    "win": {
+      "target": "portable"
+    }
   }
 }

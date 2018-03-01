@@ -7,6 +7,10 @@ var eMass   = 9.10938188e-31;                                            //Elekt
 //Simulations modifikator
 var speedMod = 0.0000001;                                                //Geschwindigkeits-Modifikator
 var forceMod = 1000000000000000000;                                      //Kräfte-Modifikator
+var randEmit = false;
+var pauseSim = false;
+var emitRate = 1;
+var rad;
 
 //Teilchen
 var electrons = [];                                                      //Teilchen 'Liste'
@@ -45,10 +49,11 @@ function setup() {                      //SETUP
   em.inp.size(80, 15);
   b2.inp.size(80, 15);
   b2.inp.position(150, height/2 + 200+100);
-  b2.inp.value(0.00005);
+  b2.inp.value('0.00005');
 }
 
 function draw() {                       //DRAW
+  if (!pauseSim) {
   background(255);
 
   //Drawing
@@ -67,6 +72,23 @@ function draw() {                       //DRAW
   text("Tesla" ,b1.inp.x+90, b1.inp.y);
   text("Tesla" ,b2.inp.x+90, b2.inp.y);
 
+  var min_eVel = sqrt((2*(float(em.inp.value())-0.0005)*eCharge)/eMass);
+  var med_eVel = sqrt((2*(float(em.inp.value()))*eCharge)/eMass);
+  var max_eVel = sqrt((2*(float(em.inp.value())+0.0005)*eCharge)/eMass);
+
+  if (randEmit) {
+    text("Elektronen Geschwindigkeit (min|med|max): "  +str(round(min_eVel*100)/100)+
+                                                  " | "+str(round(med_eVel*100)/100)+
+                                                  " | "+str(round(max_eVel*100)/100),
+                                                  em.inp.x+150, em.inp.y);
+  } else {
+    text("Elektronen Geschwindigkeit: "+str(round(em.eVel*100)/100), em.inp.x+150, em.inp.y);
+  }
+
+  text("Feldstärke E: "+str(con.E) ,con.inp.x+150, con.inp.y);
+  text("Zugelassene Geschwindigkeit (E/B): "+str(round(con.E/b1.B*100)/100) ,b1.inp.x+150, b1.inp.y);
+  //text("Masse: "+str(((rad/100)*b2.B*eCharge)/med_eVel) ,b2.inp.x+150, b2.inp.y);
+
   stroke(0);
   //Alle Teilchen werden visualisiert
   for (let i = 0; i < electrons.length; i++) {
@@ -82,7 +104,7 @@ function draw() {                       //DRAW
   pl.render();            //Schirm
 
   //Updating
-  if (frameCount%10 == 0) {em.emit();}          //Elektronen werden emittiert
+  if (frameCount%emitRate == 0) {em.emit(); em.emit();}          //Elektronen werden emittiert
 
   //Alle Teilchen werden aktualisiert
   for (let i = 0; i < electrons.length; i++) {
@@ -92,7 +114,34 @@ function draw() {                       //DRAW
   con.update();           //Kondensator wird aktualisiert
   b1.update();            //Wienfilter Magnetfeld wird aktualisiert
   pl.update();            //Schirm wird aktualisiert
-  specialB();
+  rad = specialB();
+  }
+}
+
+function keyPressed() {
+  if (keyCode == 82) {
+    b1.inp.value('0.12964');
+    b2.inp.value('0.00005');
+    con.inp.value('1750');
+    em.inp.value('0.20725');
+  }
+  if (keyCode == 71) {
+    randEmit = !randEmit;
+  }
+  if (keyCode == 88) {
+    electrons = [];
+  }
+  if (keyCode == 80) {
+    pauseSim = !pauseSim;
+  }
+  if (keyCode == UP_ARROW) {
+    if (emitRate > 1) {
+      emitRate--;
+    }
+  }
+  if (keyCode == DOWN_ARROW) {
+    emitRate++;
+  }
 }
 
 //------------------------------FUNKTIONEN-----------------------------//
@@ -126,6 +175,8 @@ function specialB(){
   strokeWeight(1);
   stroke(0);
   line(pl.x, gs*2.52+radius, pl.x+radius, gs*2.52+radius);
+
+  return radius;
 }
 
 //-------------------------------OBJECTE-------------------------------//
@@ -167,9 +218,9 @@ function Condensator(gX, gY, gWidth, gHeight) {                          //Platt
   //Visualisierungsfunktion
   this.render = function() {
     strokeWeight(1);
-    fill('rgb(0, 0, 200)');
-    rect(this.p1x1, this.p1y1, this.width, this.pWidth);
     fill('rgb(200, 0, 0)');
+    rect(this.p1x1, this.p1y1, this.width, this.pWidth);
+    fill('rgb(0, 0, 200)');
     rect(this.p2x1, this.p2y1, this.width, this.pWidth);
   }
 
@@ -183,10 +234,10 @@ function Condensator(gX, gY, gWidth, gHeight) {                          //Platt
       line(this.p1x1 + gs*i + 5, this.p1y2+10, this.p1x1 + gs*i, this.p1y2);
       textSize(25);
       textAlign(CENTER, CENTER);
-      fill('rgb(200, 0, 0)');
-      text("-", this.p1x1 + gs*i, this.p1y1+this.pWidth/2);
       fill('rgb(0, 0, 200)');
-      text("+", this.p1x1 + gs*i, this.p2y1+this.pWidth/2);
+      text("+", this.p1x1 + gs*i, this.p1y1+this.pWidth/2);
+      fill('rgb(200, 0, 0)');
+      text("-", this.p1x1 + gs*i, this.p2y1+this.pWidth/2);
     }
   }
 
@@ -223,7 +274,7 @@ function BField(gX, gY, gWidth, gHeight) {                               //Magne
   this.x = gX * gs;
   this.y = gY * gs;
 
-  this.inp = createInput('0.12964');
+  this.inp = createInput('0.129627');
   this.inp.position(150, height/2 + 150+100);
   this.B = this.inp.value();
   this.Fl;
@@ -290,7 +341,9 @@ function Emitter(gX, gY) {                                               //Emitt
   //Parameteraktualisierungsfunktion
   this.updateParams = function(){
     this.U = float(this.inp.value());
-    //this.U += random(-1, 1)*0.0005;
+    if (randEmit) {
+      this.U += random(-1, 1)*0.0005;
+    }
     this.eVel = sqrt((2*this.U*eCharge)/eMass);
   }
 }
